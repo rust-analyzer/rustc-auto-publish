@@ -10,7 +10,7 @@ use std::str;
 use std::thread;
 use std::time::Duration;
 
-const PREFIX: &str = "rustc-ap";
+const PREFIX: &str = "ra-ap";
 
 fn main() {
     let token = std::env::args().nth(1);
@@ -25,20 +25,10 @@ fn main() {
         download_src(&tmpdir, &commit);
     }
 
-    let target_crates = vec![
-        RustcApCrate {
-            name: "rustc_ast",
-            dir: "compiler/rustc_ast",
-        },
-        RustcApCrate {
-            name: "rustc_parse",
-            dir: "compiler/rustc_parse",
-        },
-        RustcApCrate {
-            name: "rustc_expand",
-            dir: "compiler/rustc_expand",
-        },
-    ];
+    let target_crates = vec![RustcApCrate {
+        name: "rustc_lexer",
+        dir: "compiler/rustc_lexer",
+    }];
 
     println!("learning about the dependency graph");
     let rustc_packages = get_rustc_packages(&target_crates, &dst);
@@ -126,7 +116,6 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
 
     for RustcApCrate { name, dir } in target_crates.iter() {
         let metadata = Command::new("cargo")
-            .arg("+nightly")
             .current_dir(dst.join(dir))
             .arg("metadata")
             .arg("--format-version=1")
@@ -215,8 +204,8 @@ struct RustcPackageInfo {
 
 fn get_version_to_publish(crates: &[&Package]) -> semver::Version {
     let mut cur = crates.iter().map(|p| get_current_version(p)).max().unwrap();
-    cur.major += 1;
-    return cur;
+    cur.minor += 1;
+    cur
 }
 
 fn get_current_version(pkg: &Package) -> semver::Version {
@@ -290,13 +279,13 @@ fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
             p.insert(
                 "description".to_string(),
                 format!(
-                    "\
-                Automatically published version of the package `{}` \
-                in the rust-lang/rust repository from commit {} \
+                    r"
+Automatically published version of the package `{}`
+in the rust-lang/rust repository from commit {}
 
-                The publishing script for this crate lives at: \
-                https://github.com/alexcrichton/rustc-auto-publish
-            ",
+The publishing script for this crate lives at:
+https://github.com/rust-analyzer/rustc-auto-publish
+",
                     pkg.name, commit
                 )
                 .into(),
@@ -367,10 +356,7 @@ fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
 
     let path = Path::new(&pkg.manifest_path).parent().unwrap();
 
-    alter_lib_rs(path);
-
     let result = Command::new("cargo")
-        .arg("+nightly")
         .arg("publish")
         .arg("--allow-dirty")
         .arg("--no-verify")
@@ -378,37 +364,4 @@ fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
         .status()
         .expect("failed to spawn cargo");
     assert!(result.success());
-}
-
-// TODO: this function shouldn't be necessary, we can change upstream libsyntax
-//       to not need these modifications.
-fn alter_lib_rs(path: &Path) {
-    let lib = path.join("lib.rs");
-    if !lib.exists() {
-        return;
-    }
-    let mut contents = String::new();
-    File::open(&lib)
-        .unwrap()
-        .read_to_string(&mut contents)
-        .unwrap();
-
-    // Inject #![feature(rustc_private)]. This is a hack, let's fix upstream so
-    // we don't have to do this.
-    let needle = "\n#![feature(";
-    if let Some(i) = contents.find(needle) {
-        contents.insert_str(i + needle.len(), "rustc_private, ");
-    }
-
-    // Delete __build_diagnostic_array!. This is a hack, let's fix upstream so
-    // we don't have to do this.
-    if let Some(i) = contents.find("__build_diagnostic_array! {") {
-        contents.truncate(i);
-        contents.push_str("fn _foo() {}\n");
-    }
-
-    File::create(&lib)
-        .unwrap()
-        .write_all(contents.as_bytes())
-        .unwrap()
 }
