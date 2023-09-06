@@ -25,10 +25,28 @@ fn main() {
         download_src(&tmpdir, &commit);
     }
 
-    let target_crates = vec![RustcApCrate {
-        name: "rustc_lexer",
-        dir: "compiler/rustc_lexer",
-    }];
+    let target_crates = vec![
+        RustcApCrate {
+            name: "rustc_lexer",
+            dir: "compiler/rustc_lexer",
+        },
+        RustcApCrate {
+            name: "rustc_serialize",
+            dir: "compiler/rustc_serialize",
+        },
+        RustcApCrate {
+            name: "rustc_macros",
+            dir: "compiler/rustc_macros",
+        },
+        RustcApCrate {
+            name: "rustc_index",
+            dir: "compiler/rustc_index",
+        },
+        RustcApCrate {
+            name: "rustc_parse_format",
+            dir: "compiler/rustc_parse_format",
+        },
+    ];
 
     println!("learning about the dependency graph");
     let rustc_packages = get_rustc_packages(&target_crates, &dst);

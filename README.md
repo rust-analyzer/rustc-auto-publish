@@ -2,11 +2,19 @@
 
 Repository for automatically publishing the below crates every Tuesday.
 
-- [rustc-ap-rustc_ast][rustc-ast-crate] [![rustc_ast version][rustc-ast-version-badge]][rustc-ast-crate]
-- [rustc-ap-rustc_expand][rustc-expand-crate] [![rustc_expand version][rustc-expand-version-badge]][rustc-expand-crate]
-- [rustc-ap-rustc_parse](https://crates.io/crates/rustc-ap_rustc_parse)
+- [ra-ap_rustc_lexer][ra-ap_rustc_lexer-crate] [![ra-ap_rustc_lexer version][ra-ap_rustc_lexer-version-badge]][ra-ap_rustc_lexer-crate]
+- [ra-ap_rustc_serialize][ra-ap_rustc_serialize-crate] [![ra-ap_rustc_serialize version][ra-ap_rustc_serialize-version-badge]][ra-ap_rustc_serialize-crate]
+- [ra-ap_rustc_lexer][ra-ap_rustc_index-crate] [![ra-ap_rustc_index version][ra-ap_rustc_index-version-badge]][ra-ap_rustc_index-crate]
+- [ra-ap_rustc_macros][ra-ap_rustc_macros-crate] [![ra-ap_rustc_macros version][ra-ap_rustc_macros-version-badge]][ra-ap_rustc_macros-crate]
+- [ra-ap_rustc_macros][ra-ap_rustc_parse_format-crate] [![ra-ap_rustc_parse_format version][ra-ap_rustc_parse_format-version-badge]][ra-ap_rustc_parse_format-crate]
 
-[rustc-ast-version-badge]: https://img.shields.io/crates/v/rustc-ap_rustc_ast?style=flat-square
-[rustc-ast-crate]: https://crates.io/crates/rustc-ap_rustc_ast
-[rustc-expand-version-badge]: https://img.shields.io/crates/v/rustc-ap_rustc_expand?style=flat-square
-[rustc-expand-crate]: https://crates.io/crates/rustc-ap_rustc_expand
+[ra-ap_rustc_lexer-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_lexer?style=flat-square
+[ra-ap_rustc_macros-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_macros?style=flat-square
+[ra-ap_rustc_serialize-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_serialize?style=flat-square
+[ra-ap_rustc_index-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_index?style=flat-square
+[ra-ap_rustc_parse_format-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_parse_format?style=flat-square
+[ra-ap_rustc_lexer-crate]: https://crates.io/crates/ra-ap_rustc_lexer
+[ra-ap_rustc_macros-crate]: https://crates.io/crates/ra-ap_rustc_macros
+[ra-ap_rustc_serialize-crate]: https://crates.io/crates/ra-ap_rustc_serialize
+[ra-ap_rustc_index-crate]: https://crates.io/crates/ra-ap_rustc_index
+[ra-ap_rustc_parse_format-crate]: https://crates.io/crates/ra-ap_rustc_parse_format
