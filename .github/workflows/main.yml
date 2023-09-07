@@ -12,16 +12,22 @@ on:
 jobs:
   run:
     name: Run
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - name: Install Rust
-        run: rustup update nightly && rustup default nightly
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable && rustup default stable
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
       - run: cargo build
       - name: Configure crates.io token
         run: |
           echo "[registry]" >> $HOME/.cargo/credentials
           echo "token = \"${{ secrets.CRATESIO_TOKEN }}\"" >> $HOME/.cargo/credentials
         if: github.event_name != 'pull_request'
-      - run: cargo run ${{ secrets.GH_TOKEN }}
+      - run: cargo run publish ${{ secrets.GH_TOKEN }}
         if: github.event_name != 'pull_request'
+      - run: cargo run nopublish ${{ secrets.GH_TOKEN }}
+        if: github.event_name == 'pull_request'

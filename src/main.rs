@@ -10,10 +10,13 @@ use std::str;
 use std::thread;
 use std::time::Duration;
 
+use cargo_metadata::{Metadata, Package};
+
 const PREFIX: &str = "ra-ap";
 
 fn main() {
-    let token = std::env::args().nth(1);
+    let do_publish = std::env::args().nth(1).unwrap() == "publish";
+    let token = std::env::args().nth(2);
     let commit = latest_master_commit(&token);
     println!("latest commit: {}", commit);
 
@@ -27,48 +30,50 @@ fn main() {
 
     let target_crates = vec![
         RustcApCrate {
-            name: "rustc_lexer",
-            dir: "compiler/rustc_lexer",
+            name: "rustc_lexer".to_owned(),
+            dir: "compiler/rustc_lexer".to_owned(),
         },
         RustcApCrate {
-            name: "rustc_serialize",
-            dir: "compiler/rustc_serialize",
+            name: "rustc_parse_format".to_owned(),
+            dir: "compiler/rustc_parse_format".to_owned(),
         },
         RustcApCrate {
-            name: "rustc_macros",
-            dir: "compiler/rustc_macros",
-        },
-        RustcApCrate {
-            name: "rustc_index",
-            dir: "compiler/rustc_index",
-        },
-        RustcApCrate {
-            name: "rustc_parse_format",
-            dir: "compiler/rustc_parse_format",
-        },
-        RustcApCrate {
-            name: "rustc_abi",
-            dir: "compiler/rustc_abi",
+            name: "rustc_abi".to_owned(),
+            dir: "compiler/rustc_abi".to_owned(),
         },
     ];
 
     println!("learning about the dependency graph");
     let rustc_packages = get_rustc_packages(&target_crates, &dst);
+    println!(
+        "found packages: {:?}",
+        rustc_packages
+            .iter()
+            .map(|it| &it.package.name)
+            .collect::<Vec<_>>()
+    );
     let mut crates = Vec::new();
     let mut seen = HashSet::new();
 
     for RustcPackageInfo { package, metadata } in rustc_packages.iter() {
         fill(&metadata, &package, &mut crates, &mut seen);
     }
+    let crates = crates_in_topological_order(&crates);
 
-    let version_to_publish = get_version_to_publish(&crates);
-    println!("going to publish {}", version_to_publish);
+    println!(
+        "topologically sorted: {:?}",
+        crates.iter().map(|it| &it.name).collect::<Vec<_>>()
+    );
+    if do_publish {
+        let version_to_publish = get_version_to_publish(&crates);
+        println!("going to publish {}", version_to_publish);
 
-    for p in crates.iter() {
-        publish(p, &commit, &version_to_publish);
+        for p in crates {
+            publish(p, &commit, &version_to_publish);
 
-        // Give the crates time to make their way into the index
-        thread::sleep(Duration::from_secs(45));
+            // Give the crates time to make their way into the index
+            thread::sleep(Duration::from_secs(45));
+        }
     }
 }
 
@@ -134,31 +139,38 @@ fn download_src(dst: &Path, commit: &str) {
 }
 
 fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPackageInfo> {
+    let mut work = target_crates.to_vec();
     let mut packages = Vec::new();
 
-    for RustcApCrate { name, dir } in target_crates.iter() {
-        let metadata = Command::new("cargo")
-            .current_dir(dst.join(dir))
-            .arg("metadata")
-            .arg("--format-version=1")
-            .output()
-            .expect("failed to execute cargo");
-        if !metadata.status.success() {
-            panic!("failed to run rustc: {:?}", metadata);
+    while let Some(RustcApCrate { name, dir }) = work.pop() {
+        if packages
+            .iter()
+            .any(|it: &RustcPackageInfo| it.package.name == name)
+        {
+            continue;
         }
-        let output = str::from_utf8(&metadata.stdout).unwrap();
-        let output: Metadata = serde_json::from_str(output).unwrap();
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.manifest_path(dst.join(dir).join("Cargo.toml"));
+        let metadata = cmd.exec().unwrap();
 
-        let rustc_package = output
+        let rustc_package = metadata
             .packages
             .iter()
             .find(|p| p.name == *name)
             .expect(&format!("failed to find {}", &name))
             .clone();
+        for dep in rustc_package.dependencies.iter() {
+            if let Some(path) = &dep.path {
+                work.push(RustcApCrate {
+                    name: dep.name.clone(),
+                    dir: path.to_string(),
+                })
+            }
+        }
 
         packages.push(RustcPackageInfo {
             package: rustc_package,
-            metadata: output,
+            metadata,
         })
     }
 
@@ -176,6 +188,8 @@ fn fill<'a>(
     }
     let node = output
         .resolve
+        .as_ref()
+        .unwrap()
         .nodes
         .iter()
         .find(|n| n.id == pkg.id)
@@ -189,34 +203,38 @@ fn fill<'a>(
     pkgs.push(pkg);
 }
 
-#[derive(Deserialize)]
-struct Metadata {
-    packages: Vec<Package>,
-    resolve: Resolve,
-}
+// dirt topo sort
+fn crates_in_topological_order<'a>(pkgs: &[&'a Package]) -> Vec<&'a Package> {
+    let mut res = Vec::new();
+    let mut visited = HashSet::default();
 
-#[derive(Deserialize, Clone)]
-struct Package {
-    id: String,
+    for pkg in pkgs {
+        go(pkgs, &mut visited, &mut res, pkg);
+    }
+
+    return res;
+
+    fn go<'a>(
+        pkgs: &[&'a Package],
+        visited: &mut HashSet<String>,
+        res: &mut Vec<&'a Package>,
+        source: &'a Package,
+    ) {
+        if !visited.insert(source.name.clone()) {
+            return;
+        }
+        for dep in source.dependencies.iter() {
+            if let Some(dep) = pkgs.iter().find(|it| it.name == dep.name) {
+                go(pkgs, visited, res, dep)
+            }
+        }
+        res.push(source)
+    }
+}
+#[derive(Clone)]
+struct RustcApCrate {
     name: String,
-    source: Option<String>,
-    manifest_path: String,
-}
-
-#[derive(Deserialize)]
-struct Resolve {
-    nodes: Vec<ResolveNode>,
-}
-
-#[derive(Deserialize)]
-struct ResolveNode {
-    id: String,
-    dependencies: Vec<String>,
-}
-
-struct RustcApCrate<'a> {
-    name: &'a str,
-    dir: &'a str,
+    dir: String,
 }
 
 struct RustcPackageInfo {
