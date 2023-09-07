@@ -46,6 +46,10 @@ fn main() {
             name: "rustc_parse_format",
             dir: "compiler/rustc_parse_format",
         },
+        RustcApCrate {
+            name: "rustc_abi",
+            dir: "compiler/rustc_abi",
+        },
     ];
 
     println!("learning about the dependency graph");
