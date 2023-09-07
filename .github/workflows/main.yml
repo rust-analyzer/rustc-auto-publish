@@ -27,5 +27,7 @@ jobs:
           echo "[registry]" >> $HOME/.cargo/credentials
           echo "token = \"${{ secrets.CRATESIO_TOKEN }}\"" >> $HOME/.cargo/credentials
         if: github.event_name != 'pull_request'
-      - run: cargo run ${{ secrets.GH_TOKEN }}
+      - run: cargo run publish ${{ secrets.GH_TOKEN }}
         if: github.event_name != 'pull_request'
+      - run: cargo run nopublish ${{ secrets.GH_TOKEN }}
+        if: github.event_name == 'pull_request'
