@@ -24,7 +24,7 @@ jobs:
       - run: cargo build
       - name: Configure crates.io token
         run: |
-          echo "[registry]" >> $HOME/.cargo/credentials
+          echo "[registry]" > $HOME/.cargo/credentials
           echo "token = \"${{ secrets.CRATESIO_TOKEN }}\"" >> $HOME/.cargo/credentials
         if: github.event_name != 'pull_request'
       - run: cargo run publish ${{ secrets.GH_TOKEN }}
