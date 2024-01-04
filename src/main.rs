@@ -30,16 +30,16 @@ fn main() {
 
     let target_crates = vec![
         RustcApCrate {
+            name: "rustc_abi".to_owned(),
+            dir: "compiler/rustc_abi".to_owned(),
+        },
+        RustcApCrate {
             name: "rustc_lexer".to_owned(),
             dir: "compiler/rustc_lexer".to_owned(),
         },
         RustcApCrate {
             name: "rustc_parse_format".to_owned(),
             dir: "compiler/rustc_parse_format".to_owned(),
-        },
-        RustcApCrate {
-            name: "rustc_abi".to_owned(),
-            dir: "compiler/rustc_abi".to_owned(),
         },
         RustcApCrate {
             name: "rustc_pattern_analysis".to_owned(),
