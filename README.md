@@ -4,7 +4,7 @@ Repository for automatically publishing the below crates every Tuesday.
 
 - [ra-ap_rustc_lexer][ra-ap_rustc_lexer-crate] [![ra-ap_rustc_lexer version][ra-ap_rustc_lexer-version-badge]][ra-ap_rustc_lexer-crate]
 - [ra-ap_rustc_serialize][ra-ap_rustc_serialize-crate] [![ra-ap_rustc_serialize version][ra-ap_rustc_serialize-version-badge]][ra-ap_rustc_serialize-crate]
-- [ra-ap_rustc_lexer][ra-ap_rustc_index-crate] [![ra-ap_rustc_index version][ra-ap_rustc_index-version-badge]][ra-ap_rustc_index-crate]
+- [ra-ap_rustc_index][ra-ap_rustc_index-crate] [![ra-ap_rustc_index version][ra-ap_rustc_index-version-badge]][ra-ap_rustc_index-crate]
 - [ra-ap_rustc_macros][ra-ap_rustc_macros-crate] [![ra-ap_rustc_macros version][ra-ap_rustc_macros-version-badge]][ra-ap_rustc_macros-crate]
 - [ra-ap_rustc_parse_format][ra-ap_rustc_parse_format-crate] [![ra-ap_rustc_parse_format version][ra-ap_rustc_parse_format-version-badge]][ra-ap_rustc_parse_format-crate]
 - [ra-ap_rustc_abi][ra-ap_rustc_abi-crate] [![ra-ap_rustc_abi version][ra-ap_rustc_abi-version-badge]][ra-ap_rustc_abi-crate]
