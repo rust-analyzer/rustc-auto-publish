@@ -41,6 +41,10 @@ fn main() {
             name: "rustc_abi".to_owned(),
             dir: "compiler/rustc_abi".to_owned(),
         },
+        RustcApCrate {
+            name: "rustc_pattern_analysis".to_owned(),
+            dir: "compiler/rustc_pattern_analysis".to_owned(),
+        },
     ];
 
     println!("learning about the dependency graph");
