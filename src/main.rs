@@ -70,13 +70,18 @@ fn main() {
     );
     if do_publish {
         let version_to_publish = get_version_to_publish(&crates);
-        println!("going to publish {}", version_to_publish);
+        println!(
+            "going to publish {} crates with version {}",
+            crates.len(),
+            version_to_publish
+        );
 
         for p in crates {
             publish(p, &commit, &version_to_publish);
 
             // Give the crates time to make their way into the index
-            thread::sleep(Duration::from_secs(45));
+            // Additionally this tries to get around the upload rate limit
+            thread::sleep(Duration::from_secs(70));
         }
     }
 }
