@@ -18,7 +18,7 @@ fn main() {
     let do_publish = std::env::args().nth(1).unwrap() == "publish";
     let token = std::env::args().nth(2);
     let commit = latest_master_commit(&token);
-    println!("latest commit: {}", commit);
+    eprintln!("latest commit: {}", commit);
 
     let tmpdir = tempdir::TempDir::new("foo").unwrap();
     let tmpdir = tmpdir.path();
@@ -32,24 +32,28 @@ fn main() {
         RustcApCrate {
             name: "rustc_abi".to_owned(),
             dir: "compiler/rustc_abi".to_owned(),
+            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_lexer".to_owned(),
             dir: "compiler/rustc_lexer".to_owned(),
+            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_parse_format".to_owned(),
             dir: "compiler/rustc_parse_format".to_owned(),
+            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_pattern_analysis".to_owned(),
             dir: "compiler/rustc_pattern_analysis".to_owned(),
+            in_tree_feature_name: "rustc".to_owned(),
         },
     ];
 
-    println!("learning about the dependency graph");
+    eprintln!("learning about the dependency graph");
     let rustc_packages = get_rustc_packages(&target_crates, &dst);
-    println!(
+    eprintln!(
         "found packages: {:?}",
         rustc_packages
             .iter()
@@ -64,13 +68,13 @@ fn main() {
     }
     let crates = crates_in_topological_order(&crates);
 
-    println!(
+    eprintln!(
         "topologically sorted: {:?}",
         crates.iter().map(|it| &it.name).collect::<Vec<_>>()
     );
     if do_publish {
         let version_to_publish = get_version_to_publish(&crates);
-        println!(
+        eprintln!(
             "going to publish {} crates with version {}",
             crates.len(),
             version_to_publish
@@ -87,7 +91,7 @@ fn main() {
 }
 
 fn latest_master_commit(token: &Option<String>) -> String {
-    println!("Learning rustc's version");
+    eprintln!("Learning rustc's version");
     let mut easy = curl::easy::Easy::new();
     easy.get(true).unwrap();
     easy.url("https://api.github.com/repos/rust-lang/rust/commits/master")
@@ -117,7 +121,7 @@ fn latest_master_commit(token: &Option<String>) -> String {
 }
 
 fn download_src(dst: &Path, commit: &str) {
-    println!("downloading source tarball");
+    eprintln!("downloading source tarball");
     let mut easy = curl::easy::Easy::new();
 
     let url = format!(
@@ -148,10 +152,71 @@ fn download_src(dst: &Path, commit: &str) {
 }
 
 fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPackageInfo> {
+    for RustcApCrate {
+        name: _,
+        dir,
+        in_tree_feature_name,
+    } in target_crates
+    {
+        let path = dst.join(dir).join("Cargo.toml");
+        let toml = std::fs::read_to_string(&path).unwrap();
+        let mut toml = toml.parse::<toml_edit::Document>().unwrap();
+
+        (|| {
+            let item = &toml
+                .get_mut("features")?
+                .as_table_like_mut()?
+                .remove(in_tree_feature_name)?;
+            let deps = item.as_array()?;
+            let mut res = vec![];
+            for ele in deps.into_iter() {
+                if let Some(s) = ele.as_str() {
+                    if s.contains('/') {
+                        // this just toggles something, skip it
+                        continue;
+                    }
+                    res.push(s.strip_prefix("dep:").unwrap_or(s).to_owned())
+                }
+            }
+            for dep in res {
+                toml.get_mut("dependencies")?
+                    .as_table_like_mut()?
+                    .remove(&dep);
+            }
+            Some(())
+        })();
+        // remove all features mentioning the in tree feature
+        (|| {
+            let features_to_kill = toml
+                .get_mut("features")?
+                .as_table_like_mut()?
+                .iter()
+                .filter(|(_, val)| {
+                    val.as_array().map_or(false, |a| {
+                        a.iter()
+                            .any(|feat| feat.as_str() == Some(&in_tree_feature_name))
+                    })
+                })
+                .map(|(key, _)| key.to_owned())
+                .collect::<Vec<_>>();
+            for f in features_to_kill {
+                toml.get_mut("features")?.as_table_like_mut()?.remove(&f);
+            }
+            Some(())
+        })();
+
+        std::fs::write(path, toml.to_string()).unwrap();
+    }
+
     let mut work = target_crates.to_vec();
     let mut packages = Vec::new();
 
-    while let Some(RustcApCrate { name, dir }) = work.pop() {
+    while let Some(RustcApCrate {
+        name,
+        dir,
+        in_tree_feature_name: _,
+    }) = work.pop()
+    {
         if packages
             .iter()
             .any(|it: &RustcPackageInfo| it.package.name == name)
@@ -173,6 +238,7 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                 work.push(RustcApCrate {
                     name: dep.name.clone(),
                     dir: path.to_string(),
+                    in_tree_feature_name: "".to_owned(),
                 })
             }
         }
@@ -244,6 +310,7 @@ fn crates_in_topological_order<'a>(pkgs: &[&'a Package]) -> Vec<&'a Package> {
 struct RustcApCrate {
     name: String,
     dir: String,
+    in_tree_feature_name: String,
 }
 
 struct RustcPackageInfo {
@@ -258,7 +325,7 @@ fn get_version_to_publish(crates: &[&Package]) -> semver::Version {
 }
 
 fn get_current_version(pkg: &Package) -> semver::Version {
-    println!("fetching current version of {}", pkg.name);
+    eprintln!("fetching current version of {}", pkg.name);
     let mut easy = curl::easy::Easy::new();
 
     let url = format!("https://crates.io/api/v1/crates/{}-{}", PREFIX, pkg.name);
@@ -301,7 +368,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
 }
 
 fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
-    println!("publishing {} {}", pkg.name, vers);
+    eprintln!("publishing {} {}", pkg.name, vers);
 
     let mut toml = String::new();
     File::open(&pkg.manifest_path)
