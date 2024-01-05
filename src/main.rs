@@ -44,11 +44,11 @@ fn main() {
             dir: "compiler/rustc_parse_format".to_owned(),
             in_tree_feature_name: "nightly".to_owned(),
         },
-        RustcApCrate {
-            name: "rustc_pattern_analysis".to_owned(),
-            dir: "compiler/rustc_pattern_analysis".to_owned(),
-            in_tree_feature_name: "rustc".to_owned(),
-        },
+        // RustcApCrate {
+        //     name: "rustc_pattern_analysis".to_owned(),
+        //     dir: "compiler/rustc_pattern_analysis".to_owned(),
+        //     in_tree_feature_name: "rustc".to_owned(),
+        // },
     ];
 
     eprintln!("learning about the dependency graph");
