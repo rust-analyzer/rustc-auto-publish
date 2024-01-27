@@ -6,8 +6,8 @@ on:
     branches: [master]
   workflow_dispatch:
   schedule:
-    # every tuesday at 8am run the build
-    - cron: "0 8 * * 2"
+    # run the build every Sunday at 8am
+    - cron: "0 8 * * 0"
 
 jobs:
   run:
