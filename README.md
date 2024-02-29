@@ -1,6 +1,6 @@
 # rustc-auto-publish
 
-Repository for automatically publishing the crates below every Subday.
+Repository for automatically publishing the crates below every Sunday.
 
 - [ra-ap_rustc_abi][ra-ap_rustc_abi-crate] [![ra-ap_rustc_abi version][ra-ap_rustc_abi-version-badge]][ra-ap_rustc_abi-crate]
 - [ra-ap_rustc_index][ra-ap_rustc_index-crate] [![ra-ap_rustc_index version][ra-ap_rustc_index-version-badge]][ra-ap_rustc_index-crate]
