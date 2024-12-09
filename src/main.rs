@@ -49,6 +49,11 @@ fn main() {
             dir: "compiler/rustc_pattern_analysis".to_owned(),
             in_tree_feature_name: "rustc".to_owned(),
         },
+        RustcApCrate {
+            name: "rustc_index".to_owned(),
+            dir: "compiler/rustc_index".to_owned(),
+            in_tree_feature_name: "nightly".to_owned(),
+        },
     ];
 
     eprintln!("learning about the dependency graph");
@@ -163,13 +168,13 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         let mut toml = toml.parse::<toml_edit::Document>().unwrap();
 
         (|| {
-            let item = &toml
+            let item = toml
                 .get_mut("features")?
                 .as_table_like_mut()?
-                .remove(in_tree_feature_name)?;
-            let deps = item.as_array()?;
+                .get_mut(in_tree_feature_name)?;
+            let deps = item.as_array_mut()?;
             let mut res = vec![];
-            for ele in deps.into_iter() {
+            for ele in deps.iter() {
                 if let Some(s) = ele.as_str() {
                     if s.contains('/') {
                         // this just toggles something, skip it
@@ -178,10 +183,14 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                     res.push(s.strip_prefix("dep:").unwrap_or(s).to_owned())
                 }
             }
+            deps.clear();
             for dep in res {
-                toml.get_mut("dependencies")?
-                    .as_table_like_mut()?
-                    .remove(&dep);
+                if let Some(deps) = toml
+                    .get_mut("dependencies")
+                    .and_then(|it| it.as_table_like_mut())
+                {
+                    deps.remove(&dep);
+                }
             }
             Some(())
         })();
