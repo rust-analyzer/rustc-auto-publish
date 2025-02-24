@@ -54,6 +54,11 @@ fn main() {
             dir: "compiler/rustc_index".to_owned(),
             in_tree_feature_name: "nightly".to_owned(),
         },
+        RustcApCrate {
+            name: "rustc_hashes".to_owned(),
+            dir: "compiler/rustc_hashes".to_owned(),
+            in_tree_feature_name: "".to_owned(),
+        },
     ];
 
     eprintln!("learning about the dependency graph");
