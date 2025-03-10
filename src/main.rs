@@ -35,6 +35,11 @@ fn main() {
             in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
+            name: "rustc_hashes".to_owned(),
+            dir: "compiler/rustc_hashes".to_owned(),
+            in_tree_feature_name: "".to_owned(),
+        },
+        RustcApCrate {
             name: "rustc_lexer".to_owned(),
             dir: "compiler/rustc_lexer".to_owned(),
             in_tree_feature_name: "nightly".to_owned(),
@@ -53,6 +58,11 @@ fn main() {
             name: "rustc_index".to_owned(),
             dir: "compiler/rustc_index".to_owned(),
             in_tree_feature_name: "nightly".to_owned(),
+        },
+        RustcApCrate {
+            name: "rustc_index_macros".to_owned(),
+            dir: "compiler/rustc_index_macros".to_owned(),
+            in_tree_feature_name: "".to_owned(),
         },
     ];
 
@@ -166,6 +176,9 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         let path = dst.join(dir).join("Cargo.toml");
         let toml = std::fs::read_to_string(&path).unwrap();
         let mut toml = toml.parse::<toml_edit::Document>().unwrap();
+
+        // remove "lints.workspace = true" because we don't have a workspace
+        toml.remove("lints");
 
         (|| {
             let item = toml
