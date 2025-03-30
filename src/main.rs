@@ -448,11 +448,11 @@ https://github.com/rust-analyzer/rustc-auto-publish
         //   at the `vers` specified above
         // * Update the name of `path` dependencies to what we're publishing,
         //   which is crates with a prefix.
-        if let Some(deps) = toml.remove("dependencies") {
+        let update_dependencies = |deps: toml::Value| -> toml::Value {
             let deps = deps
                 .as_table()
                 .unwrap()
-                .iter()
+                .into_iter()
                 .map(|(name, dep)| {
                     let table = match dep.as_table() {
                         Some(s) if s.contains_key("path") => s,
@@ -478,11 +478,47 @@ https://github.com/rust-analyzer/rustc-auto-publish
                     }
                     (name.clone(), new_table.into())
                 })
-                .collect::<Vec<_>>();
-            toml.insert(
-                "dependencies".to_string(),
-                toml::Value::Table(deps.into_iter().collect()),
-            );
+                .collect();
+            toml::Value::Table(deps)
+        };
+
+        if let Some(deps) = toml.remove("dependencies") {
+            toml.insert("dependencies".to_string(), update_dependencies(deps));
+        }
+        if let Some(deps) = toml.remove("dev-dependencies") {
+            toml.insert("dev-dependencies".to_string(), update_dependencies(deps));
+        }
+        if let Some(target) = toml.remove("target") {
+            let target = if let Some(target) = target.as_table() {
+                toml::Value::Table(
+                    target
+                        .into_iter()
+                        .map(|(name, value)| {
+                            (name.clone(), {
+                                if let Some(table) = value.as_table() {
+                                    let mut table = table.clone();
+                                    let table =
+                                        if let Some(dev_deps) = table.remove("dev-dependencies") {
+                                            table.insert(
+                                                "dev-dependencies".to_string(),
+                                                update_dependencies(dev_deps.clone()),
+                                            );
+                                            table
+                                        } else {
+                                            table.clone()
+                                        };
+                                    toml::Value::Table(table)
+                                } else {
+                                    value.clone()
+                                }
+                            })
+                        })
+                        .collect(),
+                )
+            } else {
+                target
+            };
+            toml.insert("target".to_string(), target);
         }
     }
 
