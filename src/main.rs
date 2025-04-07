@@ -14,6 +14,8 @@ use cargo_metadata::{Metadata, Package};
 
 const PREFIX: &str = "ra-ap";
 
+const IN_TREE_FEATURE_NAMES: &[&str] = &["nightly", "rustc"];
+
 fn main() {
     let do_publish = std::env::args().nth(1).unwrap() == "publish";
     let token = std::env::args().nth(2);
@@ -32,37 +34,46 @@ fn main() {
         RustcApCrate {
             name: "rustc_abi".to_owned(),
             dir: "compiler/rustc_abi".to_owned(),
-            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_hashes".to_owned(),
             dir: "compiler/rustc_hashes".to_owned(),
-            in_tree_feature_name: "".to_owned(),
         },
         RustcApCrate {
             name: "rustc_lexer".to_owned(),
             dir: "compiler/rustc_lexer".to_owned(),
-            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_parse_format".to_owned(),
             dir: "compiler/rustc_parse_format".to_owned(),
-            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_pattern_analysis".to_owned(),
             dir: "compiler/rustc_pattern_analysis".to_owned(),
-            in_tree_feature_name: "rustc".to_owned(),
         },
         RustcApCrate {
             name: "rustc_index".to_owned(),
             dir: "compiler/rustc_index".to_owned(),
-            in_tree_feature_name: "nightly".to_owned(),
         },
         RustcApCrate {
             name: "rustc_index_macros".to_owned(),
             dir: "compiler/rustc_index_macros".to_owned(),
-            in_tree_feature_name: "".to_owned(),
+        },
+        RustcApCrate {
+            name: "rustc_type_ir".to_owned(),
+            dir: "compiler/rustc_type_ir".to_owned(),
+        },
+        RustcApCrate {
+            name: "rustc_type_ir_macros".to_owned(),
+            dir: "compiler/rustc_type_ir_macros".to_owned(),
+        },
+        RustcApCrate {
+            name: "rustc_next_trait_solver".to_owned(),
+            dir: "compiler/rustc_next_trait_solver".to_owned(),
+        },
+        RustcApCrate {
+            name: "rustc_ast_ir".to_owned(),
+            dir: "compiler/rustc_ast_ir".to_owned(),
         },
     ];
 
@@ -167,12 +178,7 @@ fn download_src(dst: &Path, commit: &str) {
 }
 
 fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPackageInfo> {
-    for RustcApCrate {
-        name: _,
-        dir,
-        in_tree_feature_name,
-    } in target_crates
-    {
+    for RustcApCrate { name: _, dir } in target_crates {
         let path = dst.join(dir).join("Cargo.toml");
         let toml = std::fs::read_to_string(&path).unwrap();
         let mut toml = toml.parse::<toml_edit::Document>().unwrap();
@@ -180,33 +186,35 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         // remove "lints.workspace = true" because we don't have a workspace
         toml.remove("lints");
 
-        (|| {
-            let item = toml
-                .get_mut("features")?
-                .as_table_like_mut()?
-                .get_mut(in_tree_feature_name)?;
-            let deps = item.as_array_mut()?;
-            let mut res = vec![];
-            for ele in deps.iter() {
-                if let Some(s) = ele.as_str() {
-                    if s.contains('/') {
-                        // this just toggles something, skip it
-                        continue;
+        for in_tree_feature_name in IN_TREE_FEATURE_NAMES {
+            (|| {
+                let item = toml
+                    .get_mut("features")?
+                    .as_table_like_mut()?
+                    .get_mut(in_tree_feature_name)?;
+                let deps = item.as_array_mut()?;
+                let mut res = vec![];
+                for ele in deps.iter() {
+                    if let Some(s) = ele.as_str() {
+                        if s.contains('/') {
+                            // this just toggles something, skip it
+                            continue;
+                        }
+                        res.push(s.strip_prefix("dep:").unwrap_or(s).to_owned())
                     }
-                    res.push(s.strip_prefix("dep:").unwrap_or(s).to_owned())
                 }
-            }
-            deps.clear();
-            for dep in res {
-                if let Some(deps) = toml
-                    .get_mut("dependencies")
-                    .and_then(|it| it.as_table_like_mut())
-                {
-                    deps.remove(&dep);
+                deps.clear();
+                for dep in res {
+                    if let Some(deps) = toml
+                        .get_mut("dependencies")
+                        .and_then(|it| it.as_table_like_mut())
+                    {
+                        deps.remove(&dep);
+                    }
                 }
-            }
-            Some(())
-        })();
+                Some(())
+            })();
+        }
         // remove all features mentioning the in tree feature
         (|| {
             let features_to_kill = toml
@@ -215,8 +223,10 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                 .iter()
                 .filter(|(_, val)| {
                     val.as_array().map_or(false, |a| {
-                        a.iter()
-                            .any(|feat| feat.as_str() == Some(&in_tree_feature_name))
+                        a.iter().any(|feat| {
+                            feat.as_str()
+                                .is_some_and(|feat| IN_TREE_FEATURE_NAMES.contains(&feat))
+                        })
                     })
                 })
                 .map(|(key, _)| key.to_owned())
@@ -230,21 +240,11 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         std::fs::write(path, toml.to_string()).unwrap();
     }
 
-    let mut work = target_crates.to_vec();
     let mut packages = Vec::new();
-
-    while let Some(RustcApCrate {
-        name,
-        dir,
-        in_tree_feature_name: _,
-    }) = work.pop()
-    {
-        if packages
+    for RustcApCrate { name, dir } in target_crates {
+        assert!(!packages
             .iter()
-            .any(|it: &RustcPackageInfo| it.package.name == name)
-        {
-            continue;
-        }
+            .any(|it: &RustcPackageInfo| it.package.name == *name));
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(dst.join(dir).join("Cargo.toml"));
         let metadata = cmd.exec().unwrap();
@@ -255,16 +255,17 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
             .find(|p| p.name == *name)
             .expect(&format!("failed to find {}", &name))
             .clone();
-        for dep in rustc_package.dependencies.iter() {
-            if let Some(path) = &dep.path {
-                work.push(RustcApCrate {
-                    name: dep.name.clone(),
-                    dir: path.to_string(),
-                    in_tree_feature_name: "".to_owned(),
-                })
-            }
-        }
 
+        let bad_deps = rustc_package
+            .dependencies
+            .iter()
+            .filter(|dep| dep.path.is_some() && target_crates.iter().all(|it| it.name != dep.name))
+            .map(|dep| dep.name.clone())
+            .collect::<Vec<_>>();
+        assert!(
+            bad_deps.is_empty(),
+            "Some dependencies for {name} are not specified for publishing: {bad_deps:?}",
+        );
         packages.push(RustcPackageInfo {
             package: rustc_package,
             metadata,
@@ -332,7 +333,6 @@ fn crates_in_topological_order<'a>(pkgs: &[&'a Package]) -> Vec<&'a Package> {
 struct RustcApCrate {
     name: String,
     dir: String,
-    in_tree_feature_name: String,
 }
 
 struct RustcPackageInfo {
