@@ -122,9 +122,9 @@ fn latest_master_commit(token: &Option<String>) -> String {
     easy.get(true).unwrap();
     easy.url("https://api.github.com/repos/rust-lang/rust/commits/master")
         .unwrap();
-    if let Some(token) = token {
-        easy.username("x-access-token").unwrap();
-        easy.password(token).unwrap();
+    if let Some(_token) = token {
+        // easy.username("x-access-token").unwrap();
+        // easy.password(token).unwrap();
     }
     let mut headers = curl::easy::List::new();
     headers
