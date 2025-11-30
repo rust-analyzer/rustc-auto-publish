@@ -120,7 +120,7 @@ fn latest_master_commit(token: &Option<String>) -> String {
     eprintln!("Learning rustc's version");
     let mut easy = curl::easy::Easy::new();
     easy.get(true).unwrap();
-    easy.url("https://api.github.com/repos/rust-lang/rust/commits/master")
+    easy.url("https://api.github.com/repos/rust-lang/rust/commits/HEAD")
         .unwrap();
     if let Some(_token) = token {
         // easy.username("x-access-token").unwrap();
