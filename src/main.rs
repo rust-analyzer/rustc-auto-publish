@@ -20,11 +20,11 @@ fn main() {
     let do_publish = std::env::args().nth(1).unwrap() == "publish";
     let token = std::env::args().nth(2);
     let commit = latest_master_commit(&token);
-    eprintln!("latest commit: {}", commit);
+    eprintln!("latest commit: {commit}");
 
     let tmpdir = tempdir::TempDir::new("foo").unwrap();
     let tmpdir = tmpdir.path();
-    let dst = tmpdir.join(format!("rust-{}", commit));
+    let dst = tmpdir.join(format!("rust-{commit}"));
     let ok = dst.join(".ok");
     if !ok.exists() {
         download_src(&tmpdir, &commit);
@@ -150,10 +150,7 @@ fn download_src(dst: &Path, commit: &str) {
     eprintln!("downloading source tarball");
     let mut easy = curl::easy::Easy::new();
 
-    let url = format!(
-        "https://github.com/rust-lang/rust/archive/{}.tar.gz",
-        commit
-    );
+    let url = format!("https://github.com/rust-lang/rust/archive/{commit}.tar.gz");
     easy.get(true).unwrap();
     easy.url(&url).unwrap();
     easy.follow_location(true).unwrap();
@@ -171,7 +168,7 @@ fn download_src(dst: &Path, commit: &str) {
     let mut archive = tar::Archive::new(flate2::bufread::GzDecoder::new(&data[..]));
     archive.unpack(dst).unwrap();
 
-    let root = dst.join(format!("rust-{}", commit));
+    let root = dst.join(format!("rust-{commit}"));
     fs::rename(root.join("Cargo.toml"), root.join("Cargo.toml.bk")).unwrap();
 
     File::create(&root.join(".ok")).unwrap();
@@ -253,7 +250,7 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
             .packages
             .iter()
             .find(|p| p.name == *name)
-            .expect(&format!("failed to find {}", &name))
+            .expect(&format!("failed to find {name}"))
             .clone();
 
         let bad_deps = rustc_package
