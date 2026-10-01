@@ -3,7 +3,6 @@ extern crate serde_derive;
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{self, File};
-use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
 use std::str;
@@ -389,11 +388,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
 fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
     eprintln!("publishing {} {}", pkg.name, vers);
 
-    let mut toml = String::new();
-    File::open(&pkg.manifest_path)
-        .unwrap()
-        .read_to_string(&mut toml)
-        .unwrap();
+    let toml = fs::read_to_string(&pkg.manifest_path).unwrap();
     let mut toml: toml::Value = toml.parse().unwrap();
     {
         let toml = toml.as_table_mut().unwrap();
@@ -519,11 +514,7 @@ https://github.com/rust-analyzer/rustc-auto-publish
         }
     }
 
-    let toml = toml.to_string();
-    File::create(&pkg.manifest_path)
-        .unwrap()
-        .write_all(toml.as_bytes())
-        .unwrap();
+    fs::write(&pkg.manifest_path, toml.to_string()).unwrap();
 
     let path = Path::new(&pkg.manifest_path).parent().unwrap();
 
