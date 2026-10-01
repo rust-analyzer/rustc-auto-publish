@@ -218,8 +218,8 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         // remove all features mentioning the in tree feature
         (|| {
             let features_to_kill = toml
-                .get_mut("features")?
-                .as_table_like_mut()?
+                .get("features")?
+                .as_table_like()?
                 .iter()
                 .filter(|(_, val)| {
                     val.as_array().is_some_and(|a| {
