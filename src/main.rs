@@ -461,12 +461,10 @@ https://github.com/rust-analyzer/rustc-auto-publish
                             new_table.insert(k.to_string(), v.clone());
                         }
                     }
-                    new_table.insert("version".to_string(), toml::Value::String(vers.to_string()));
+                    new_table.insert("version".to_string(), vers.to_string().into());
                     if !has_package {
-                        new_table.insert(
-                            "package".to_string(),
-                            toml::Value::String(format!("{}-{}", PREFIX, name)),
-                        );
+                        new_table
+                            .insert("package".to_string(), format!("{}-{}", PREFIX, name).into());
                     }
                     (name.clone(), new_table.into())
                 })
