@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate serde_derive;
-
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{self, File};
 use std::path::Path;
@@ -10,6 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 use cargo_metadata::{Metadata, Package};
+use serde_derive::Deserialize;
 
 const PREFIX: &str = "ra-ap";
 
