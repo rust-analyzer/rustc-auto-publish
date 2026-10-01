@@ -32,48 +32,48 @@ fn main() {
 
     let target_crates = vec![
         RustcApCrate {
-            name: "rustc_abi".to_owned(),
-            dir: "compiler/rustc_abi".to_owned(),
+            name: "rustc_abi",
+            dir: "compiler/rustc_abi",
         },
         RustcApCrate {
-            name: "rustc_hashes".to_owned(),
-            dir: "compiler/rustc_hashes".to_owned(),
+            name: "rustc_hashes",
+            dir: "compiler/rustc_hashes",
         },
         RustcApCrate {
-            name: "rustc_lexer".to_owned(),
-            dir: "compiler/rustc_lexer".to_owned(),
+            name: "rustc_lexer",
+            dir: "compiler/rustc_lexer",
         },
         RustcApCrate {
-            name: "rustc_parse_format".to_owned(),
-            dir: "compiler/rustc_parse_format".to_owned(),
+            name: "rustc_parse_format",
+            dir: "compiler/rustc_parse_format",
         },
         RustcApCrate {
-            name: "rustc_pattern_analysis".to_owned(),
-            dir: "compiler/rustc_pattern_analysis".to_owned(),
+            name: "rustc_pattern_analysis",
+            dir: "compiler/rustc_pattern_analysis",
         },
         RustcApCrate {
-            name: "rustc_index".to_owned(),
-            dir: "compiler/rustc_index".to_owned(),
+            name: "rustc_index",
+            dir: "compiler/rustc_index",
         },
         RustcApCrate {
-            name: "rustc_index_macros".to_owned(),
-            dir: "compiler/rustc_index_macros".to_owned(),
+            name: "rustc_index_macros",
+            dir: "compiler/rustc_index_macros",
         },
         RustcApCrate {
-            name: "rustc_type_ir".to_owned(),
-            dir: "compiler/rustc_type_ir".to_owned(),
+            name: "rustc_type_ir",
+            dir: "compiler/rustc_type_ir",
         },
         RustcApCrate {
-            name: "rustc_type_ir_macros".to_owned(),
-            dir: "compiler/rustc_type_ir_macros".to_owned(),
+            name: "rustc_type_ir_macros",
+            dir: "compiler/rustc_type_ir_macros",
         },
         RustcApCrate {
-            name: "rustc_next_trait_solver".to_owned(),
-            dir: "compiler/rustc_next_trait_solver".to_owned(),
+            name: "rustc_next_trait_solver",
+            dir: "compiler/rustc_next_trait_solver",
         },
         RustcApCrate {
-            name: "rustc_ast_ir".to_owned(),
-            dir: "compiler/rustc_ast_ir".to_owned(),
+            name: "rustc_ast_ir",
+            dir: "compiler/rustc_ast_ir",
         },
     ];
 
@@ -331,8 +331,8 @@ fn crates_in_topological_order<'a>(pkgs: &[&'a Package]) -> Vec<&'a Package> {
 }
 #[derive(Clone)]
 struct RustcApCrate {
-    name: String,
-    dir: String,
+    name: &'static str,
+    dir: &'static str,
 }
 
 struct RustcPackageInfo {
