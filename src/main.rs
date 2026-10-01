@@ -204,11 +204,11 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                     }
                 }
                 deps.clear();
-                for dep in res {
-                    if let Some(deps) = toml
-                        .get_mut("dependencies")
-                        .and_then(|it| it.as_table_like_mut())
-                    {
+                if let Some(deps) = toml
+                    .get_mut("dependencies")
+                    .and_then(|it| it.as_table_like_mut())
+                {
+                    for dep in res {
                         deps.remove(&dep);
                     }
                 }
