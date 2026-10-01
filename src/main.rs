@@ -365,7 +365,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
         t.perform().unwrap();
     }
     if easy.response_code().unwrap() == 404 {
-        return semver::Version::parse("0.0.0").unwrap();
+        return const { semver::Version::new(0, 0, 0) };
     }
 
     assert_eq!(easy.response_code().unwrap(), 200);
