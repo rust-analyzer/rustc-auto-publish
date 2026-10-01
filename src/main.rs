@@ -222,7 +222,7 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                 .as_table_like_mut()?
                 .iter()
                 .filter(|(_, val)| {
-                    val.as_array().map_or(false, |a| {
+                    val.as_array().is_some_and(|a| {
                         a.iter().any(|feat| {
                             feat.as_str()
                                 .is_some_and(|feat| IN_TREE_FEATURE_NAMES.contains(&feat))
