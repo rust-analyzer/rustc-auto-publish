@@ -29,6 +29,8 @@ fn main() {
         download_src(&tmpdir, &commit);
     }
 
+    // When adding new crates, also add the crate to the crate list in
+    // https://github.com/rust-lang/team/blob/main/repos/rust-analyzer/rustc-auto-publish.toml
     let target_crates = vec![
         RustcApCrate {
             name: "rustc_abi".to_owned(),
