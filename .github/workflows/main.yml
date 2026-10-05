@@ -5,6 +5,15 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      repo_override:
+        description: 'Source GitHub repository (owner/repo); blank uses rust-lang/rust'
+        required: false
+        type: string
+      sha_override:
+        description: 'Source commit SHA; blank uses HEAD of the selected repository'
+        required: false
+        type: string
   schedule:
     # run the build every Sunday at 8am
     - cron: "0 8 * * 0"
@@ -27,7 +36,12 @@ jobs:
           echo "[registry]" > $HOME/.cargo/credentials
           echo "token = \"${{ secrets.CRATESIO_TOKEN }}\"" >> $HOME/.cargo/credentials
         if: github.event_name != 'pull_request'
-      - run: cargo run publish ${{ secrets.GH_TOKEN }}
+      - name: Publish
+        run: cargo run -- publish "$GH_TOKEN" "$REPO_OVERRIDE" "$SHA_OVERRIDE"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO_OVERRIDE: ${{ inputs.repo_override }}
+          SHA_OVERRIDE: ${{ inputs.sha_override }}
         if: github.event_name != 'pull_request'
       - run: cargo run nopublish ${{ secrets.GH_TOKEN }}
         if: github.event_name == 'pull_request'
