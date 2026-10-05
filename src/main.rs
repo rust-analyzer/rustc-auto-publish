@@ -14,16 +14,26 @@ const PREFIX: &str = "ra-ap";
 const IN_TREE_FEATURE_NAMES: &[&str] = &["nightly", "rustc"];
 
 fn main() {
-    let do_publish = std::env::args().nth(1).unwrap() == "publish";
-    let commit = latest_rustc_commit();
-    eprintln!("latest commit: {commit}");
+    let mut args = std::env::args().skip(1);
+    let do_publish = args.next().unwrap() == "publish";
+    let repository = args.next().filter(|arg| !arg.is_empty());
+    let repository = repository.as_deref().unwrap_or("rust-lang/rust");
+    let commit = args
+        .next()
+        .filter(|arg| !arg.is_empty())
+        .unwrap_or_else(|| latest_rustc_commit(repository));
+    let version = args
+        .next()
+        .filter(|arg| !arg.is_empty())
+        .map(|v| semver::Version::parse(&v).expect("invalid version"));
+    eprintln!("source: {repository} at {commit}");
 
     let tmpdir = tempdir::TempDir::new("foo").unwrap();
     let tmpdir = tmpdir.path();
     let dst = tmpdir.join(format!("rust-{commit}"));
     let ok = dst.join(".ok");
     if !ok.exists() {
-        download_src(&tmpdir, &commit);
+        download_src(&tmpdir, &repository, &commit);
     }
 
     // When adding new crates, also add the crate to the crate list in
@@ -97,7 +107,7 @@ fn main() {
         crates.iter().map(|it| &it.name).collect::<Vec<_>>()
     );
     if do_publish {
-        let version_to_publish = get_version_to_publish(&crates);
+        let version_to_publish = version.unwrap_or_else(|| get_version_to_publish(&crates));
         eprintln!(
             "going to publish {} crates with version {}",
             crates.len(),
@@ -105,7 +115,7 @@ fn main() {
         );
 
         for p in crates {
-            publish(p, &commit, &version_to_publish);
+            publish(p, &repository, &commit, &version_to_publish);
 
             // Give the crates time to make their way into the index
             // Additionally this tries to get around the upload rate limit
@@ -114,12 +124,14 @@ fn main() {
     }
 }
 
-fn latest_rustc_commit() -> String {
+fn latest_rustc_commit(repository: &str) -> String {
     eprintln!("Learning rustc's version");
     let mut easy = curl::easy::Easy::new();
     easy.get(true).unwrap();
-    easy.url("https://api.github.com/repos/rust-lang/rust/commits/HEAD")
-        .unwrap();
+    easy.url(&format!(
+        "https://api.github.com/repos/{repository}/commits/HEAD"
+    ))
+    .unwrap();
     let mut headers = curl::easy::List::new();
     headers
         .append("Accept: application/vnd.github.VERSION.sha")
@@ -137,14 +149,19 @@ fn latest_rustc_commit() -> String {
         .unwrap();
         t.perform().unwrap();
     }
-    String::from_utf8(data).unwrap()
+    assert_eq!(
+        easy.response_code(),
+        Ok(200),
+        "failed to resolve {repository}"
+    );
+    str::from_utf8(&data).unwrap().trim().to_owned()
 }
 
-fn download_src(dst: &Path, commit: &str) {
+fn download_src(dst: &Path, repository: &str, commit: &str) {
     eprintln!("downloading source tarball");
     let mut easy = curl::easy::Easy::new();
 
-    let url = format!("https://github.com/rust-lang/rust/archive/{commit}.tar.gz");
+    let url = format!("https://github.com/{repository}/archive/{commit}.tar.gz");
     easy.get(true).unwrap();
     easy.url(&url).unwrap();
     easy.follow_location(true).unwrap();
@@ -380,7 +397,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
     }
 }
 
-fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
+fn publish(pkg: &Package, repository: &str, commit: &str, vers: &semver::Version) {
     eprintln!("publishing {} {}", pkg.name, vers);
 
     let toml = fs::read_to_string(&pkg.manifest_path).unwrap();
@@ -406,7 +423,7 @@ fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
                 format!(
                     r"
 Automatically published version of the package `{}`
-in the rust-lang/rust repository from commit {}
+in the {repository} repository from commit {}
 
 The publishing script for this crate lives at:
 https://github.com/rust-analyzer/rustc-auto-publish
@@ -417,7 +434,7 @@ https://github.com/rust-analyzer/rustc-auto-publish
             );
             p.insert(
                 "repository".to_string(),
-                "https://github.com/rust-lang/rust".to_string().into(),
+                format!("https://github.com/{repository}").into(),
             );
         }
 

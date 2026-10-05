@@ -24,3 +24,21 @@ Repository for automatically publishing the crates below every Sunday.
 [ra-ap_rustc_pattern_analysis-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_pattern_analysis?style=flat-square
 [ra-ap_rustc_serialize-crate]: https://crates.io/crates/ra-ap_rustc_serialize
 [ra-ap_rustc_serialize-version-badge]: https://img.shields.io/crates/v/ra-ap_rustc_serialize?style=flat-square
+
+## Manual publishing
+
+This is sometimes needed when an automatically published version doesn't build
+in rust-analyzer (see e.g. https://github.com/rust-lang/rust/pull/160164).
+
+The solution we use is to create a fork of rust-lang/rust, apply patches on
+affected versions, and point the auto-publishing script to that repo+commit.
+
+On CI, this is done by running the **CI** workflow manually with:
+- `repo_override` set to the GitHub repository in `owner/repo` form (blank
+defaults to `rust-lang/rust`)
+- `sha_override` set to the commit SHA (blank defaults to selected repository's
+`HEAD`)
+- `version_override` set to the version to publish as (blank defaults to the
+next minor version)
+
+This publishes the usual `ra-ap_*` crates with the selected version.
