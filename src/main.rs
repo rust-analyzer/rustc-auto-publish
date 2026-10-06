@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate serde_derive;
-
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{self, File};
-use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
 use std::str;
@@ -11,6 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 use cargo_metadata::{Metadata, Package};
+use serde_derive::Deserialize;
 
 const PREFIX: &str = "ra-ap";
 
@@ -20,11 +17,11 @@ fn main() {
     let do_publish = std::env::args().nth(1).unwrap() == "publish";
     let token = std::env::args().nth(2);
     let commit = latest_master_commit(&token);
-    eprintln!("latest commit: {}", commit);
+    eprintln!("latest commit: {commit}");
 
     let tmpdir = tempdir::TempDir::new("foo").unwrap();
     let tmpdir = tmpdir.path();
-    let dst = tmpdir.join(format!("rust-{}", commit));
+    let dst = tmpdir.join(format!("rust-{commit}"));
     let ok = dst.join(".ok");
     if !ok.exists() {
         download_src(&tmpdir, &commit);
@@ -32,48 +29,48 @@ fn main() {
 
     let target_crates = vec![
         RustcApCrate {
-            name: "rustc_abi".to_owned(),
-            dir: "compiler/rustc_abi".to_owned(),
+            name: "rustc_abi",
+            dir: "compiler/rustc_abi",
         },
         RustcApCrate {
-            name: "rustc_hashes".to_owned(),
-            dir: "compiler/rustc_hashes".to_owned(),
+            name: "rustc_hashes",
+            dir: "compiler/rustc_hashes",
         },
         RustcApCrate {
-            name: "rustc_lexer".to_owned(),
-            dir: "compiler/rustc_lexer".to_owned(),
+            name: "rustc_lexer",
+            dir: "compiler/rustc_lexer",
         },
         RustcApCrate {
-            name: "rustc_parse_format".to_owned(),
-            dir: "compiler/rustc_parse_format".to_owned(),
+            name: "rustc_parse_format",
+            dir: "compiler/rustc_parse_format",
         },
         RustcApCrate {
-            name: "rustc_pattern_analysis".to_owned(),
-            dir: "compiler/rustc_pattern_analysis".to_owned(),
+            name: "rustc_pattern_analysis",
+            dir: "compiler/rustc_pattern_analysis",
         },
         RustcApCrate {
-            name: "rustc_index".to_owned(),
-            dir: "compiler/rustc_index".to_owned(),
+            name: "rustc_index",
+            dir: "compiler/rustc_index",
         },
         RustcApCrate {
-            name: "rustc_index_macros".to_owned(),
-            dir: "compiler/rustc_index_macros".to_owned(),
+            name: "rustc_index_macros",
+            dir: "compiler/rustc_index_macros",
         },
         RustcApCrate {
-            name: "rustc_type_ir".to_owned(),
-            dir: "compiler/rustc_type_ir".to_owned(),
+            name: "rustc_type_ir",
+            dir: "compiler/rustc_type_ir",
         },
         RustcApCrate {
-            name: "rustc_type_ir_macros".to_owned(),
-            dir: "compiler/rustc_type_ir_macros".to_owned(),
+            name: "rustc_type_ir_macros",
+            dir: "compiler/rustc_type_ir_macros",
         },
         RustcApCrate {
-            name: "rustc_next_trait_solver".to_owned(),
-            dir: "compiler/rustc_next_trait_solver".to_owned(),
+            name: "rustc_next_trait_solver",
+            dir: "compiler/rustc_next_trait_solver",
         },
         RustcApCrate {
-            name: "rustc_ast_ir".to_owned(),
-            dir: "compiler/rustc_ast_ir".to_owned(),
+            name: "rustc_ast_ir",
+            dir: "compiler/rustc_ast_ir",
         },
     ];
 
@@ -150,10 +147,7 @@ fn download_src(dst: &Path, commit: &str) {
     eprintln!("downloading source tarball");
     let mut easy = curl::easy::Easy::new();
 
-    let url = format!(
-        "https://github.com/rust-lang/rust/archive/{}.tar.gz",
-        commit
-    );
+    let url = format!("https://github.com/rust-lang/rust/archive/{commit}.tar.gz");
     easy.get(true).unwrap();
     easy.url(&url).unwrap();
     easy.follow_location(true).unwrap();
@@ -171,7 +165,7 @@ fn download_src(dst: &Path, commit: &str) {
     let mut archive = tar::Archive::new(flate2::bufread::GzDecoder::new(&data[..]));
     archive.unpack(dst).unwrap();
 
-    let root = dst.join(format!("rust-{}", commit));
+    let root = dst.join(format!("rust-{commit}"));
     fs::rename(root.join("Cargo.toml"), root.join("Cargo.toml.bk")).unwrap();
 
     File::create(&root.join(".ok")).unwrap();
@@ -204,11 +198,11 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
                     }
                 }
                 deps.clear();
-                for dep in res {
-                    if let Some(deps) = toml
-                        .get_mut("dependencies")
-                        .and_then(|it| it.as_table_like_mut())
-                    {
+                if let Some(deps) = toml
+                    .get_mut("dependencies")
+                    .and_then(|it| it.as_table_like_mut())
+                {
+                    for dep in res {
                         deps.remove(&dep);
                     }
                 }
@@ -218,11 +212,11 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
         // remove all features mentioning the in tree feature
         (|| {
             let features_to_kill = toml
-                .get_mut("features")?
-                .as_table_like_mut()?
+                .get("features")?
+                .as_table_like()?
                 .iter()
                 .filter(|(_, val)| {
-                    val.as_array().map_or(false, |a| {
+                    val.as_array().is_some_and(|a| {
                         a.iter().any(|feat| {
                             feat.as_str()
                                 .is_some_and(|feat| IN_TREE_FEATURE_NAMES.contains(&feat))
@@ -253,7 +247,7 @@ fn get_rustc_packages(target_crates: &[RustcApCrate], dst: &Path) -> Vec<RustcPa
             .packages
             .iter()
             .find(|p| p.name == *name)
-            .expect(&format!("failed to find {}", &name))
+            .expect(&format!("failed to find {name}"))
             .clone();
 
         let bad_deps = rustc_package
@@ -331,8 +325,8 @@ fn crates_in_topological_order<'a>(pkgs: &[&'a Package]) -> Vec<&'a Package> {
 }
 #[derive(Clone)]
 struct RustcApCrate {
-    name: String,
-    dir: String,
+    name: &'static str,
+    dir: &'static str,
 }
 
 struct RustcPackageInfo {
@@ -368,7 +362,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
         t.perform().unwrap();
     }
     if easy.response_code().unwrap() == 404 {
-        return semver::Version::parse("0.0.0").unwrap();
+        return const { semver::Version::new(0, 0, 0) };
     }
 
     assert_eq!(easy.response_code().unwrap(), 200);
@@ -392,11 +386,7 @@ fn get_current_version(pkg: &Package) -> semver::Version {
 fn publish(pkg: &Package, commit: &str, vers: &semver::Version) {
     eprintln!("publishing {} {}", pkg.name, vers);
 
-    let mut toml = String::new();
-    File::open(&pkg.manifest_path)
-        .unwrap()
-        .read_to_string(&mut toml)
-        .unwrap();
+    let toml = fs::read_to_string(&pkg.manifest_path).unwrap();
     let mut toml: toml::Value = toml.parse().unwrap();
     {
         let toml = toml.as_table_mut().unwrap();
@@ -469,12 +459,10 @@ https://github.com/rust-analyzer/rustc-auto-publish
                             new_table.insert(k.to_string(), v.clone());
                         }
                     }
-                    new_table.insert("version".to_string(), toml::Value::String(vers.to_string()));
+                    new_table.insert("version".to_string(), vers.to_string().into());
                     if !has_package {
-                        new_table.insert(
-                            "package".to_string(),
-                            toml::Value::String(format!("{}-{}", PREFIX, name)),
-                        );
+                        new_table
+                            .insert("package".to_string(), format!("{}-{}", PREFIX, name).into());
                     }
                     (name.clone(), new_table.into())
                 })
@@ -522,11 +510,7 @@ https://github.com/rust-analyzer/rustc-auto-publish
         }
     }
 
-    let toml = toml.to_string();
-    File::create(&pkg.manifest_path)
-        .unwrap()
-        .write_all(toml.as_bytes())
-        .unwrap();
+    fs::write(&pkg.manifest_path, toml.to_string()).unwrap();
 
     let path = Path::new(&pkg.manifest_path).parent().unwrap();
 
