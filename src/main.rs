@@ -18,8 +18,7 @@ const IN_TREE_FEATURE_NAMES: &[&str] = &["nightly", "rustc"];
 
 fn main() {
     let do_publish = std::env::args().nth(1).unwrap() == "publish";
-    let token = std::env::args().nth(2);
-    let commit = latest_master_commit(&token);
+    let commit = latest_rustc_commit();
     eprintln!("latest commit: {}", commit);
 
     let tmpdir = tempdir::TempDir::new("foo").unwrap();
@@ -30,6 +29,8 @@ fn main() {
         download_src(&tmpdir, &commit);
     }
 
+    // When adding new crates, also add the crate to the crate list in
+    // https://github.com/rust-lang/team/blob/main/repos/rust-analyzer/rustc-auto-publish.toml
     let target_crates = vec![
         RustcApCrate {
             name: "rustc_abi".to_owned(),
@@ -116,16 +117,12 @@ fn main() {
     }
 }
 
-fn latest_master_commit(token: &Option<String>) -> String {
+fn latest_rustc_commit() -> String {
     eprintln!("Learning rustc's version");
     let mut easy = curl::easy::Easy::new();
     easy.get(true).unwrap();
     easy.url("https://api.github.com/repos/rust-lang/rust/commits/HEAD")
         .unwrap();
-    if let Some(_token) = token {
-        // easy.username("x-access-token").unwrap();
-        // easy.password(token).unwrap();
-    }
     let mut headers = curl::easy::List::new();
     headers
         .append("Accept: application/vnd.github.VERSION.sha")

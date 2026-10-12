@@ -13,21 +13,25 @@ jobs:
   run:
     name: Run
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.0
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable && rustup default stable
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
       - run: cargo build
-      - name: Configure crates.io token
-        run: |
-          echo "[registry]" > $HOME/.cargo/credentials
-          echo "token = \"${{ secrets.CRATESIO_TOKEN }}\"" >> $HOME/.cargo/credentials
+      - uses: rust-lang/crates-io-auth-action@v1
         if: github.event_name != 'pull_request'
-      - run: cargo run publish ${{ secrets.GH_TOKEN }}
+        id: auth
+      - run: cargo run publish
         if: github.event_name != 'pull_request'
-      - run: cargo run nopublish ${{ secrets.GH_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+      - run: cargo run nopublish
         if: github.event_name == 'pull_request'
