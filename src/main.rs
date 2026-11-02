@@ -83,6 +83,10 @@ fn main() {
             name: "rustc_ast_ir",
             dir: "compiler/rustc_ast_ir",
         },
+        RustcApCrate {
+            name: "rustc_unicode",
+            dir: "compiler/rustc_unicode",
+        },
     ];
 
     eprintln!("learning about the dependency graph");
